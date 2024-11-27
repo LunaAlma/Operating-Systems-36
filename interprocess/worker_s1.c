@@ -27,23 +27,67 @@
 
 static void rsleep (int t);
 
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <S1_queue_name> <Rsp_queue_name>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
 
-int main (int argc, char * argv[])
-{
-    // TODO:
-    // (see message_queue_test() in interprocess_basic.c)
-    //  * open the two message queues (whose names are provided in the
-    //    arguments)
-    //  * repeatedly:
-    //      - read from the S1 message queue the new job to do
-    //      - wait a random amount of time (e.g. rsleep(10000);)
-    //      - do the job 
-    //      - write the results to the Rsp message queue
-    //    until there are no more tasks to do
-    //  * close the message queues
+    const char *s1_queue_name = argv[1];
+    const char *rsp_queue_name = argv[2];
 
-    return(0);
+    mqd_t s1_queue, rsp_queue; // Message queue descriptors
+    struct mq_attr attr;       // Queue attributes
+    Message msg;               // Message structure
+
+    // Open the S1 message queue for reading
+    s1_queue = mq_open(s1_queue_name, O_RDONLY);
+    if (s1_queue == (mqd_t)-1) {
+        perror("mq_open S1_queue");
+        exit(EXIT_FAILURE);
+    }
+
+    // Open the Rsp message queue for writing
+    rsp_queue = mq_open(rsp_queue_name, O_WRONLY);
+    if (rsp_queue == (mqd_t)-1) {
+        perror("mq_open Rsp_queue");
+        mq_close(s1_queue);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Service 1 Worker: Listening for jobs...\n");
+
+    while (true) {
+        // Receive a job from the S1 queue
+        ssize_t bytes_read = mq_receive(s1_queue, (char *)&msg, sizeof(msg), NULL);
+        if (bytes_read == -1) {
+            perror("mq_receive");
+            break;
+        }
+
+        printf("Service 1 Worker: Received job %d with data %d\n", msg.jobID, msg.data);
+
+        // Process the job
+        int result = service(msg.data);
+        printf("Service 1 Worker: Processed job %d, result = %d\n", msg.jobID, result);
+
+        // Send the result back to the Rsp queue
+        msg.data = result; // Replace input data with the result
+        if (mq_send(rsp_queue, (const char *)&msg, sizeof(msg), 0) == -1) {
+            perror("mq_send");
+            break;
+        }
+
+        printf("Service 1 Worker: Sent result for job %d\n", msg.jobID);
+    }
+
+    // Cleanup
+    mq_close(s1_queue);
+    mq_close(rsp_queue);
+
+    return 0;
 }
+
 
 /*
  * rsleep(int t)

@@ -7,6 +7,14 @@
  */
 
 #include "service1.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <errno.h>      // for perror()
+#include <unistd.h>     // for getpid()
+#include <mqueue.h>     // for mq functions
+#include <string.h>     // for memset
+#include "messages.h"
 
 
 int service(int data) {
@@ -22,3 +30,4 @@ int service(int data) {
 
 	return n3;
 }
+
