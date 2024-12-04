@@ -46,17 +46,17 @@ int main (int argc, char * argv[])
     MQ_REQUEST_MESSAGE request_msg; 
 
     while(true) {
-        int i = getNextRequest(&request_message.RequestID, request_message.data, request_message.ServiceID); 
+        int i = getNextRequest(&request_msg.RequestID, &request_msg.data, &request_msg.ServiceID); 
 
         if (i == NO_REQ) {
             if (mq_close(mq_req) == -1) {
                 perror("Failed to close request queue");
                 return 1;
-            }
+            } 
             break; 
         }
 
-        if (mq_send(mq_req, (const char *)&request_message, sizeof(request_message), 0) == -1) {
+        if (mq_send(mq_req, (const char *)&request_msg, sizeof(request_msg), 0) == -1) {
             perror("Failed to send message to request queue");
             break;
         }
